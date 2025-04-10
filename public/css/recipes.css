@@ -54,11 +54,14 @@
 
 /* 💬 Call to Action Box */
 .wprm-call-to-action {
-  background-color: #f3f4f6 !important; /* gray-100 */
+  background-color: #d1d5db !important; /* Tailwind gray-300 */
   padding: 1rem !important;
   margin-top: 2rem !important;
   border-radius: 0.5rem !important;
   font-size: 1rem !important;
   font-weight: 500 !important;
   color: #111827 !important;
+}
+.wprm-recipe-temperature {
+  content: attr(data-temp) "°";
 }
