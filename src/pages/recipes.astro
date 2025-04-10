@@ -3,8 +3,9 @@ import { fetchRecipes } from "../utils/fetchRecipes.ts";
 const posts = await fetchRecipes();
 ---
 
-<html>
+<html lang="en">
   <head>
+    <meta charset="UTF-8" />
     <title>Recipes</title>
   </head>
   <body>
@@ -12,17 +13,17 @@ const posts = await fetchRecipes();
     <ul>
       {posts.map(post => (
         <li>
-  <a href={`/recipes/${post.slug}`}>
-    <h2>{post.title.rendered}</h2>
-    {post._embedded?.['wp:featuredmedia']?.[0]?.source_url && (
-      <img
-        src={post._embedded['wp:featuredmedia'][0].source_url}
-        alt={post.title.rendered}
-        width="300"
-      />
-    )}
-  </a>
-</li>
+          <a href={`/recipes/${post.slug}`}>
+            <h2 set:html={post.title.rendered} />
+            {post.featuredImage && (
+              <img
+                src={post.featuredImage}
+                alt={post.title.rendered}
+                width="300"
+              />
+            )}
+          </a>
+        </li>
       ))}
     </ul>
   </body>

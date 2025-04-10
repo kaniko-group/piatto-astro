@@ -1,3 +1,17 @@
+function decodeHtmlEntities(text: string) {
+  return text
+    .replace(/&rsquo;/g, '’')
+    .replace(/&lsquo;/g, '‘')
+    .replace(/&rdquo;/g, '”')
+    .replace(/&ldquo;/g, '“')
+    .replace(/&deg;/g, '°')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(code));
+}
+
 const BASE_URL = "https://piattorecipes.com/wp-json/wp/v2";
 
 export async function fetchRecipes() {
@@ -14,11 +28,19 @@ export async function fetchRecipes() {
 
     return posts.map(post => {
       try {
-        // ✔ Transform lazy YouTube embed wrappers into real iframes
-        if (post.content?.rendered?.includes("wp-block-embed__wrapper")) {
+        const decodedTitle = decodeHtmlEntities(post.title.rendered);
+        const decodedExcerpt = decodeHtmlEntities(post.excerpt.rendered);
+        let decodedContent = decodeHtmlEntities(post.content.rendered);
+
+        // ✅ Extract YouTube video ID if present
+        const youtubeMatch = decodedContent.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([\w-]+)/);
+        const youtubeVideoId = youtubeMatch ? youtubeMatch[1] : null;
+
+        // ✅ Fix embedded YouTube links
+        if (decodedContent.includes("wp-block-embed__wrapper")) {
           console.log("✔ Embed found in post:", post.slug);
 
-          post.content.rendered = post.content.rendered.replace(
+          decodedContent = decodedContent.replace(
             /<div class="wp-block-embed__wrapper">\s*(https:\/\/(?:www\.)?(?:youtube\.com|youtu\.be)\/[^\s<]+)\s*<\/div>/g,
             (_, url) => {
               const videoId = url.includes("v=")
@@ -30,26 +52,27 @@ export async function fetchRecipes() {
           );
         }
 
-        // ✅ Clean lazyloaded iframes and images in post body
-        post.content.rendered = post.content.rendered
-          // Fix lazyloaded YouTube iframes using data-src
+        // ✅ Clean lazyloaded iframes and images
+        decodedContent = decodedContent
           .replace(
             /<iframe([^>]+)data-src="([^"]+)"([^>]*)src="[^"]+"([^>]*)>/g,
             '<iframe$1src="$2"$3$4>'
           )
-          // Fix lazyloaded <img> tags using data-src + base64 placeholder
-          .replace(/\s+src="data:image\/gif[^"]*"/g, '')       // remove placeholder src
-          .replace(/\s+data-src=/g, ' src=')                   // data-src → src
-          .replace(/\s+data-srcset=/g, ' srcset=')             // data-srcset → srcset
-          .replace(/<img(?![^>]*loading=)([^>]+)>/g, '<img loading="lazy"$1>'); // enforce native lazyload
+          .replace(/\s+src="data:image\/gif[^"]*"/g, '')
+          .replace(/\s+data-src=/g, ' src=')
+          .replace(/\s+data-srcset=/g, ' srcset=')
+          .replace(/<img(?![^>]*loading=)([^>]+)>/g, '<img loading="lazy"$1>');
 
-        // ✅ Extract featured image
         const featuredImage =
           post._embedded?.["wp:featuredmedia"]?.[0]?.source_url || null;
 
         return {
           ...post,
+          title: { ...post.title, rendered: decodedTitle },
+          excerpt: { ...post.excerpt, rendered: decodedExcerpt },
+          content: { ...post.content, rendered: decodedContent },
           featuredImage,
+          youtubeVideoId, // ✅ Add this to each post
         };
       } catch (err) {
         console.error("🔥 Error transforming post:", post.slug, err);
