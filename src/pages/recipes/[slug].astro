@@ -1,7 +1,7 @@
 ---
 import { fetchRecipes } from "../../utils/fetchRecipes";
 
-// Fetching recipes to render first post
+// Fetching recipes to render the first post
 const recipes = await fetchRecipes();
 const post = recipes[0];  // Assuming you're rendering the first post
 
@@ -12,27 +12,42 @@ post.content.rendered = post.content.rendered
     '<iframe$1src="$2"$3$4>'
   )
   .replace(/\s+loading="lazy"/g, ''); // Optional: strip lazy attr if present
+  
+// ✅ Remove unwanted special characters or symbols (like weird emojis)
+post.content.rendered = post.content.rendered.replace(/[^ -~]+/g, '');  // Removes non-ASCII characters
 
 // Tell Astro which pages to build
 export async function getStaticPaths() {
   const posts = await fetchRecipes();
   return posts.map(post => ({
-    params: { slug: post.slug },
+    params: { slug: post.slug },  // Ensure slug is being returned from your data
   }));
 }
 ---
 
 <html>
   <head>
+    <meta charset="UTF-8" />
     <title>{post.title.rendered}</title>
   </head>
-  <body class="bg-white text-gray-900 font-sans p-6 md:p-10 max-w-3xl mx-auto mb-20">
+
+  <body class="bg-white text-gray-900 font-sans p-6 md:p-10 max-w-screen-lg mx-auto mb-20">
     <h1 class="text-4xl font-extrabold mb-6 leading-tight">
       {post.title.rendered}
     </h1>
 
+    {/* Render featured image */}
+    {post._embedded?.['wp:featuredmedia']?.[0]?.source_url && (
+      <img
+        src={post._embedded['wp:featuredmedia'][0].source_url}  // Use the correct source URL from the API
+        alt={post.title.rendered}
+        class="w-full rounded-xl my-8 shadow-lg"
+      />
+    )}
+
+    {/* Apply prose class to ensure correct styling of dynamic HTML content */}
     <div
-      class="prose prose-lg max-w-none prose-headings:font-semibold prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl prose-p:my-4 prose-img:my-6 prose-figure:my-6"
+      class="prose prose-lg max-w-none prose-headings:font-semibold prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl prose-p:my-4 prose-img:my-6 prose-figure:my-6 prose-h1:mb-4 prose-h2:mb-4 prose-h3:mb-4"
       set:html={post.content.rendered}
     ></div>
   </body>

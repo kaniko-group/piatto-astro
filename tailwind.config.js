@@ -5,5 +5,7 @@ module.exports = {
   theme: {
     extend: {},
   },
-  plugins: [],
+  plugins: [
+    require('@tailwindcss/typography'), // This line enables the Typography plugin
+  ],
 }
