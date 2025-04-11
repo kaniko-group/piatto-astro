@@ -2,5 +2,5 @@
   package = "@netlify/plugin-lighthouse"
 
   [plugins.inputs]
-    urls = ["/recipes/authentic-italian-alfredo-sauce-recipe#wprm-recipe-container-2230"]
+    urls = ["/recipes/authentic-italian-alfredo-sauce-recipe"]
     output_path = "reports/lighthouse.html"
