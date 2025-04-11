@@ -2,5 +2,5 @@
   package = "@netlify/plugin-lighthouse"
 
   [plugins.inputs]
-    urls = [ "https://staging.piattorecipes.com/recipes/authentic-italian-alfredo-sauce-recipe" ]
+    audit_url = "https://staging.piattorecipes.com/recipes/authentic-italian-alfredo-sauce-recipe"
     output_path = "reports/lighthouse.html"
