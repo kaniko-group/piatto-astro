@@ -6,10 +6,10 @@ const { slug } = Astro.params;
 const recipes = await fetchRecipes();
 const post = recipes.find(p => p.slug === slug);
 
-// ⬇️ Fetch YouTube comments if video ID exists
 let youtubeComments = [];
 let averageRating = null;
 let ratingComments = [];
+let aggregateRatingSchema = null;
 
 if (post?.youtubeVideoId) {
   youtubeComments = await getYouTubeComments(post.youtubeVideoId, 100);
@@ -18,6 +18,15 @@ if (post?.youtubeVideoId) {
   if (ratingComments.length > 0) {
     const avg = ratingComments.reduce((sum, c) => sum + c.stars, 0) / ratingComments.length;
     averageRating = avg.toFixed(1);
+
+    // ✅ build the schema object here
+    if (ratingComments.length > 2) {
+      aggregateRatingSchema = {
+        "@type": "AggregateRating",
+        "ratingValue": averageRating,
+        "reviewCount": ratingComments.length
+      };
+    }
   }
 }
 
@@ -49,6 +58,7 @@ export async function getStaticPaths() {
       <img
         src={post.featuredImage}
         alt={post.title.rendered}
+        loading="lazy"
         class="w-full rounded-xl my-8 shadow-lg"
       />
     )}
@@ -96,6 +106,12 @@ export async function getStaticPaths() {
           iframe.parentNode.insertBefore(wrapper, iframe);
           wrapper.appendChild(iframe);
         });
+
+        // Add lazy loading to images in the rendered content
+        const images = document.querySelectorAll('div.prose img');
+        images.forEach((img) => {
+          img.setAttribute('loading', 'lazy');
+        });
       });
     </script>
 
@@ -141,5 +157,17 @@ export async function getStaticPaths() {
         outline-offset: 2px;
       }
     </style>
+    
+    {aggregateRatingSchema && (
+      <script type="application/ld+json">
+        {JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Recipe",
+          "name": post.title.rendered,
+          "aggregateRating": aggregateRatingSchema
+        })}
+      </script>
+    )}
+
   </body>
 </html>

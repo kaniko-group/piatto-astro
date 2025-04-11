@@ -64,3 +64,8 @@
 .wprm-recipe-temperature {
   content: attr(data-temp) "°";
 }
+
+/* Hide WPRM recipe rating globally */
+.wprm-recipe-rating {
+  display: none !important;
+}
