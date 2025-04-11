@@ -4,3 +4,6 @@
   [plugins.inputs]
     audit_url = "https://staging.piattorecipes.com/recipes/authentic-italian-alfredo-sauce-recipe"
     output_path = "reports/lighthouse.html"
+    number_of_runs = 1
+    disable_device_emulation = true
+    disable_cpu_throttling = true
