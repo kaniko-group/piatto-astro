@@ -1,2 +1,7 @@
+# netlify.toml
+
 [[plugins]]
   package = "@netlify/plugin-lighthouse"
+
+  [plugins.inputs]
+    output_path = "reports/lighthouse.html"
