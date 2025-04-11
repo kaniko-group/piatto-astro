@@ -8,15 +8,19 @@ const post = recipes.find(p => p.slug === slug);
 
 // ⬇️ Fetch YouTube comments if video ID exists
 let youtubeComments = [];
+let averageRating = null;
+let ratingComments = [];
+
 if (post?.youtubeVideoId) {
-  youtubeComments = await getYouTubeComments(post.youtubeVideoId, 5);
-  console.log("🧪 youtubeComments:", youtubeComments); // Log it
+  youtubeComments = await getYouTubeComments(post.youtubeVideoId, 100);
+  ratingComments = youtubeComments.filter(c => c.stars);
+
+  if (ratingComments.length > 0) {
+    const avg = ratingComments.reduce((sum, c) => sum + c.stars, 0) / ratingComments.length;
+    averageRating = avg.toFixed(1);
+  }
 }
 
-console.log("📺 Slug:", slug);
-console.log("🎥 Video ID from post:", post.youtubeVideoId);
-
-// Tell Astro which pages to build
 export async function getStaticPaths() {
   const posts = await fetchRecipes();
   return posts.map(post => ({
@@ -29,7 +33,6 @@ export async function getStaticPaths() {
   <head>
     <meta charset="UTF-8" />
     <title>{post.title.rendered}</title>
-    <!-- WPRM styles and interactivity -->
     <link rel="stylesheet" href="https://piattorecipes.com/wp-content/plugins/wp-recipe-maker/dist/public-modern.css" />
     <script src="https://piattorecipes.com/wp-content/plugins/wp-recipe-maker/dist/public-modern.js" defer></script>
   </head>
@@ -50,6 +53,15 @@ export async function getStaticPaths() {
       />
     )}
 
+    <!-- Optional YouTube average rating -->
+    {averageRating && (
+      <div class="flex items-center gap-2 mt-4 text-yellow-600 text-lg font-medium">
+        <span>YouTube Rating: {averageRating} / 5</span>
+        <span>{"⭐".repeat(Math.round(averageRating))}</span>
+        <span class="text-sm text-gray-500">({ratingComments.length} reviews)</span>
+      </div>
+    )}
+
     <!-- Recipe Content -->
     <div class="prose prose-lg max-w-none prose-headings:font-semibold prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl prose-p:my-4 prose-img:my-6 prose-figure:my-6 prose-h1:mb-4 prose-h2:mb-4 prose-h3:mb-4" set:html={post.content.rendered}></div>
 
@@ -57,17 +69,24 @@ export async function getStaticPaths() {
       <section class="mt-12 border-t pt-8">
         <h2 class="text-2xl font-bold mb-4">What Viewers Are Saying on YouTube</h2>
         <ul class="space-y-6">
-          {youtubeComments.map(comment => (
+          {youtubeComments.slice(0, 10).map(comment => (
             <li class="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-md shadow-sm">
-              <p class="italic">"{comment}"</p>
-              <p class="text-sm text-gray-500 mt-2">– YouTube viewer</p>
+              <p class="italic">"{comment.text}"</p>
+              <p class="text-sm text-gray-500 mt-2">
+                – {comment.author || "YouTube viewer"}
+                {comment.stars && (
+                  <span class="ml-2 text-yellow-500">
+                    {"⭐".repeat(comment.stars)}
+                  </span>
+                )}
+              </p>
             </li>
           ))}
         </ul>
       </section>
     )}
 
-    <!-- Script to handle scrolling to recipe -->
+    <!-- Video & Recipe Scroll Script -->
     <script is:inline>
       document.addEventListener("DOMContentLoaded", function () {
         document.querySelectorAll("iframe[src*='youtube.com']").forEach(function (iframe) {
@@ -79,48 +98,48 @@ export async function getStaticPaths() {
         });
       });
     </script>
-    
+
     <script>
-  document.addEventListener("DOMContentLoaded", function () {
-    const recipeContainer = document.querySelector('[id^="wprm-recipe-container-"]');
-    const videoContainer = document.querySelector('[id^="wprm-video-container-"]');
+      document.addEventListener("DOMContentLoaded", function () {
+        const recipeContainer = document.querySelector('[id^="wprm-recipe-container-"]');
+        const videoContainer = document.querySelector('[id^="wprm-video-container-"]');
 
-    if (recipeContainer) {
-      const recipeLink = document.getElementById("jump-to-recipe-link");
-      if (recipeLink) recipeLink.href = `#${recipeContainer.id}`;
-    }
+        if (recipeContainer) {
+          const recipeLink = document.getElementById("jump-to-recipe-link");
+          if (recipeLink) recipeLink.href = `#${recipeContainer.id}`;
+        }
 
-    if (videoContainer) {
-      const videoLink = document.getElementById("jump-to-video-link");
-      if (videoLink) videoLink.href = `#${videoContainer.id}`;
-    }
-  });
-</script>
+        if (videoContainer) {
+          const videoLink = document.getElementById("jump-to-video-link");
+          if (videoLink) videoLink.href = `#${videoContainer.id}`;
+        }
+      });
+    </script>
 
-<style>
-  .jump-button {
-    display: inline-block;
-    margin: 0.5rem 0.5rem 0 0;
-    padding: 0.75rem 1.25rem;
-    font-size: 1rem;
-    font-weight: 600;
-    color: white;
-    background-color: #d35400;
-    border: none;
-    border-radius: 6px;
-    text-decoration: none;
-    cursor: pointer;
-    transition: background-color 0.2s ease-in-out;
-  }
+    <style>
+      .jump-button {
+        display: inline-block;
+        margin: 0.5rem 0.5rem 0 0;
+        padding: 0.75rem 1.25rem;
+        font-size: 1rem;
+        font-weight: 600;
+        color: white;
+        background-color: #d35400;
+        border: none;
+        border-radius: 6px;
+        text-decoration: none;
+        cursor: pointer;
+        transition: background-color 0.2s ease-in-out;
+      }
 
-  .jump-button:hover {
-    background-color: #e67e22;
-  }
+      .jump-button:hover {
+        background-color: #e67e22;
+      }
 
-  .jump-button:focus {
-    outline: 2px solid #f39c12;
-    outline-offset: 2px;
-  }
-</style>
+      .jump-button:focus {
+        outline: 2px solid #f39c12;
+        outline-offset: 2px;
+      }
+    </style>
   </body>
 </html>

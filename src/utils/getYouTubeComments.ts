@@ -12,9 +12,28 @@ function decodeHtmlEntities(text: string) {
     .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(code));
 }
 
+// ⭐ Basic rule-based sentiment → star rating
+function assignStarRating(text: string): number {
+  const lower = text.toLowerCase();
+
+  // ❌ Detect negative or complaint language
+  if (/bland|gross|not good|bad|horrible|weird|problem|dry|too salty|didn.?t work|didn.?t like/.test(lower)) {
+    return 2; // or even 1 if you want
+  }
+
+  if (/meh|okay|not bad|just ok/.test(lower)) {
+    return 3;
+  }
+
+  // ✅ Everything else gets a 5
+  return 5;
+}
+
+
+
 const API_KEY = import.meta.env.YOUTUBE_API_KEY;
 
-export async function getYouTubeComments(videoId: string, maxResults = 10) {
+export async function getYouTubeComments(videoId: string, maxResults = 100) {
   if (!API_KEY || !videoId) return [];
 
   const url = `https://www.googleapis.com/youtube/v3/commentThreads?key=${API_KEY}&videoId=${videoId}&part=snippet&maxResults=${maxResults}&order=relevance`;
@@ -28,12 +47,19 @@ export async function getYouTubeComments(videoId: string, maxResults = 10) {
 
     const data = await res.json();
 
-    console.log("✅ Fetched comments:", data.items);
-
     return data.items.map((item: any) => {
-      // Decode the comment text to handle emoji properly
-      const comment = decodeHtmlEntities(item.snippet.topLevelComment.snippet.textDisplay);
-      return comment;
+      const snippet = item.snippet.topLevelComment.snippet;
+      const text = decodeHtmlEntities(snippet.textDisplay);
+      const stars = assignStarRating(text);
+
+      return {
+        text,
+        author: snippet.authorDisplayName || "YouTube viewer",
+        avatar: snippet.authorProfileImageUrl,
+        channelUrl: snippet.authorChannelUrl,
+        stars,
+        publishedAt: snippet.publishedAt,
+      };
     });
   } catch (err) {
     console.error("❌ Error fetching YouTube comments", err);
