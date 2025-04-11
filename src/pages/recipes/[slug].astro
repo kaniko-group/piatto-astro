@@ -1,20 +1,20 @@
 ---
 import { fetchRecipes } from "../../utils/fetchRecipes";
+import { getYouTubeComments } from "../../utils/getYouTubeComments";
 
-// Fetching recipes to render the first post
+const { slug } = Astro.params;
 const recipes = await fetchRecipes();
-const post = recipes[0];
+const post = recipes.find(p => p.slug === slug);
 
-// ✅ Clean YouTube lazyload embeds at build time
-post.content.rendered = post.content.rendered
-  .replace(
-    /<iframe([^>]+)data-src="([^"]+)"([^>]*)src="[^"]+"([^>]*)>/g,
-    '<iframe$1src="$2"$3$4>'
-  )
-  .replace(/\s+loading="lazy"/g, '');
+// ⬇️ Fetch YouTube comments if video ID exists
+let youtubeComments = [];
+if (post?.youtubeVideoId) {
+  youtubeComments = await getYouTubeComments(post.youtubeVideoId, 5);
+  console.log("🧪 youtubeComments:", youtubeComments); // Log it
+}
 
-// ✅ Remove unwanted special characters or symbols
-post.content.rendered = post.content.rendered.replace(/[^ -~]+/g, '');
+console.log("📺 Slug:", slug);
+console.log("🎥 Video ID from post:", post.youtubeVideoId);
 
 // Tell Astro which pages to build
 export async function getStaticPaths() {
@@ -25,45 +25,102 @@ export async function getStaticPaths() {
 }
 ---
 
-<html>
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <title>{post.title.rendered}</title>
+    <!-- WPRM styles and interactivity -->
+    <link rel="stylesheet" href="https://piattorecipes.com/wp-content/plugins/wp-recipe-maker/dist/public-modern.css" />
+    <script src="https://piattorecipes.com/wp-content/plugins/wp-recipe-maker/dist/public-modern.js" defer></script>
   </head>
 
   <body class="bg-white text-gray-900 font-sans p-6 md:p-10 max-w-screen-lg mx-auto mb-20">
-    <h1 class="text-4xl font-extrabold mb-6 leading-tight">
-      {post.title.rendered}
-    </h1>
+    <h1 class="text-4xl font-extrabold mb-6 leading-tight" set:html={post.title.rendered}></h1>
 
-    {/* Render featured image */}
-    {post._embedded?.['wp:featuredmedia']?.[0]?.source_url && (
+    <!-- Jump buttons -->
+    <div class="flex flex-wrap gap-3 mb-8">
+      <a id="jump-to-recipe-link" class="jump-button" href="#">Jump to Recipe</a>
+    </div>
+
+    {post.featuredImage && (
       <img
-        src={post._embedded['wp:featuredmedia'][0].source_url}
+        src={post.featuredImage}
         alt={post.title.rendered}
         class="w-full rounded-xl my-8 shadow-lg"
       />
     )}
 
-    {/* Render dynamic HTML content with Tailwind typography */}
-    <div
-      class="prose prose-lg max-w-none prose-headings:font-semibold prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl prose-p:my-4 prose-img:my-6 prose-figure:my-6 prose-h1:mb-4 prose-h2:mb-4 prose-h3:mb-4"
-      set:html={post.content.rendered}
-    ></div>
+    <!-- Recipe Content -->
+    <div class="prose prose-lg max-w-none prose-headings:font-semibold prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl prose-p:my-4 prose-img:my-6 prose-figure:my-6 prose-h1:mb-4 prose-h2:mb-4 prose-h3:mb-4" set:html={post.content.rendered}></div>
 
-    {/* Responsive YouTube embed fix */}
+    {youtubeComments.length > 0 && (
+      <section class="mt-12 border-t pt-8">
+        <h2 class="text-2xl font-bold mb-4">What Viewers Are Saying on YouTube</h2>
+        <ul class="space-y-6">
+          {youtubeComments.map(comment => (
+            <li class="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-md shadow-sm">
+              <p class="italic">"{comment}"</p>
+              <p class="text-sm text-gray-500 mt-2">– YouTube viewer</p>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )}
+
+    <!-- Script to handle scrolling to recipe -->
     <script is:inline>
       document.addEventListener("DOMContentLoaded", function () {
         document.querySelectorAll("iframe[src*='youtube.com']").forEach(function (iframe) {
           const wrapper = document.createElement("div");
           wrapper.className = "w-full aspect-video my-6";
-
           iframe.classList.add("w-full", "h-full", "rounded-lg");
-
           iframe.parentNode.insertBefore(wrapper, iframe);
           wrapper.appendChild(iframe);
         });
       });
     </script>
+    
+    <script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const recipeContainer = document.querySelector('[id^="wprm-recipe-container-"]');
+    const videoContainer = document.querySelector('[id^="wprm-video-container-"]');
+
+    if (recipeContainer) {
+      const recipeLink = document.getElementById("jump-to-recipe-link");
+      if (recipeLink) recipeLink.href = `#${recipeContainer.id}`;
+    }
+
+    if (videoContainer) {
+      const videoLink = document.getElementById("jump-to-video-link");
+      if (videoLink) videoLink.href = `#${videoContainer.id}`;
+    }
+  });
+</script>
+
+<style>
+  .jump-button {
+    display: inline-block;
+    margin: 0.5rem 0.5rem 0 0;
+    padding: 0.75rem 1.25rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: white;
+    background-color: #d35400;
+    border: none;
+    border-radius: 6px;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out;
+  }
+
+  .jump-button:hover {
+    background-color: #e67e22;
+  }
+
+  .jump-button:focus {
+    outline: 2px solid #f39c12;
+    outline-offset: 2px;
+  }
+</style>
   </body>
 </html>
